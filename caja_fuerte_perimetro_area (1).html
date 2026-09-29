@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Caja Fuerte: Perímetro y Área</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Space+Mono:wght@700&display=swap">
+<style>
+  :root {
+    --bg: #0E1B33;
+    --bg-deep: #0A1428;
+    --panel: #16274A;
+    --panel-2: #1C2F58;
+    --steel-1: #E7ECF1;
+    --steel-2: #9AA7B6;
+    --steel-3: #5B6B80;
+    --gold: #D9AE47;
+    --gold-soft: #F2D98A;
+    --gold-deep: #9C7A22;
+    --text: #EEF2F7;
+    --text-dim: #A9B6C9;
+    --green: #3FA66B;
+    --green-deep: #245C3C;
+    --red: #D14B4B;
+    --red-deep: #7A2828;
+    --radius-safe: 18px;
+    --radius-card: 22px;
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { color-scheme: dark; }
+  }
+  :root[data-theme="dark"] { color-scheme: dark; }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    min-height: 100%;
+  }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  body {
+    font-family: 'Poppins', 'Segoe UI', sans-serif;
+    color: var(--text);
+    background:
+      radial-gradient(ellipse at 50% -10%, #1B2E54 0%, transparent 55%),
+      radial-gradient(ellipse at 90% 110%, #14213D 0%, transparent 50%),
+      var(--bg);
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: clamp(20px, 4vw, 44px) clamp(16px, 4vw, 32px) 60px;
+  }
+
+  /* ---------- Header (juego) ---------- */
+  .hero { text-align: center; margin-bottom: clamp(24px, 4vw, 38px); }
+  .hero .badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 13px; letter-spacing: 0.02em; color: var(--gold-soft);
+    background: rgba(217, 174, 71, 0.12); border: 1px solid rgba(217, 174, 71, 0.35);
+    padding: 6px 14px; border-radius: 999px; margin-bottom: 16px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 5.2vw, 44px); font-weight: 800; line-height: 1.08;
+    margin: 0 0 10px; letter-spacing: -0.01em;
+  }
+  .hero h1 span {
+    background: linear-gradient(120deg, var(--gold-soft), var(--gold) 60%, var(--gold-deep));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .hero p { color: var(--text-dim); font-size: clamp(14px, 2.4vw, 16px); max-width: 60ch; margin: 0 auto; line-height: 1.55; }
+
+  .progress-row { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 22px; color: var(--text-dim); font-size: 14px; }
+  .progress-track { width: min(280px, 50vw); height: 8px; border-radius: 999px; background: var(--panel-2); overflow: hidden; border: 1px solid rgba(255,255,255,0.06); }
+  .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--gold-deep), var(--gold-soft)); transition: width 0.4s ease; }
+
+  /* ---------- Grid de cajas fuertes ---------- */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: clamp(10px, 2vw, 16px); }
+
+  .safe {
+    position: relative; aspect-ratio: 1; border: none; border-radius: var(--radius-safe);
+    background: linear-gradient(155deg, var(--steel-1) 0%, var(--steel-2) 55%, var(--steel-3) 100%);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.35), inset 0 2px 3px rgba(255,255,255,0.55), inset 0 -6px 10px rgba(0,0,0,0.25);
+    cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 4px; padding: 8px; transition: transform 0.15s ease, box-shadow 0.15s ease; font-family: 'Poppins', sans-serif;
+  }
+  .safe:hover:not(.opened) { transform: translateY(-4px); box-shadow: 0 14px 22px rgba(0,0,0,0.4), inset 0 2px 3px rgba(255,255,255,0.6), inset 0 -6px 10px rgba(0,0,0,0.25); }
+  .safe:active:not(.opened) { transform: translateY(-1px) scale(0.98); }
+  .safe:focus-visible { outline: 3px solid var(--gold-soft); outline-offset: 3px; }
+  .safe .dial { width: 34%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle at 32% 28%, #fff, var(--steel-2) 55%, var(--steel-3) 100%); box-shadow: 0 2px 4px rgba(0,0,0,0.3), inset 0 1px 2px rgba(255,255,255,0.6); }
+  .safe .num { font-weight: 700; font-size: clamp(13px, 2.6vw, 16px); color: #24344F; letter-spacing: 0.01em; }
+  .safe .lock-emoji { font-size: clamp(13px, 2.4vw, 15px); line-height: 1; }
+  .safe.opened { cursor: default; }
+  .safe.opened:hover { transform: none; }
+  .safe.opened.correct { background: linear-gradient(155deg, #CFEBDA 0%, var(--green) 65%, var(--green-deep) 100%); }
+  .safe.opened.incorrect { background: linear-gradient(155deg, #F3D4D4 0%, var(--red) 65%, var(--red-deep) 100%); }
+  .safe.opened .dial { display: none; }
+  .safe.opened .num { color: rgba(20,30,20,0.75); }
+  .safe.opened.incorrect .num { color: rgba(40,10,10,0.75); }
+
+  .instructions { margin-top: 28px; text-align: center; color: var(--text-dim); font-size: 13.5px; line-height: 1.6; }
+  .instructions strong { color: var(--text); }
+
+  .sound-toggle { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 16px; }
+  .sound-toggle button { background: var(--panel); border: 1px solid rgba(255,255,255,0.1); color: var(--text-dim); font-size: 13px; padding: 7px 14px; border-radius: 999px; cursor: pointer; font-family: inherit; }
+  .sound-toggle button:hover { color: var(--text); border-color: rgba(255,255,255,0.25); }
+
+  /* ---------- Overlay / Modal pregunta ---------- */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(6, 11, 22, 0.78); backdrop-filter: blur(3px);
+    display: flex; align-items: center; justify-content: center;
+    padding: env(safe-area-inset-top, 16px) 16px env(safe-area-inset-bottom, 16px);
+    z-index: 50; opacity: 0; pointer-events: none; transition: opacity 0.2s ease;
+  }
+  .overlay.show { opacity: 1; pointer-events: auto; }
+
+  .modal {
+    width: min(520px, 100%); max-height: 88vh; overflow-y: auto;
+    background: linear-gradient(180deg, var(--panel-2), var(--panel));
+    border: 1px solid rgba(217, 174, 71, 0.25); border-radius: var(--radius-card);
+    padding: clamp(20px, 4vw, 30px); box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+    transform: translateY(12px) scale(0.98); transition: transform 0.22s ease;
+  }
+  .overlay.show .modal { transform: translateY(0) scale(1); }
+
+  .modal-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .modal-top .q-label { font-size: 13px; color: var(--gold-soft); font-weight: 600; letter-spacing: 0.02em; }
+  .modal-top .timer-num { font-family: 'Space Mono', monospace; font-weight: 700; font-size: 20px; color: var(--text); min-width: 52px; text-align: right; }
+  .modal-top .timer-num.urgent { color: var(--red); }
+
+  .timer-track { height: 8px; border-radius: 999px; background: rgba(255,255,255,0.08); overflow: hidden; margin-bottom: 20px; }
+  .timer-fill { height: 100%; width: 100%; background: linear-gradient(90deg, var(--gold-deep), var(--gold-soft)); transition: width 1s linear, background 0.3s ease; border-radius: 999px; }
+  .timer-fill.urgent { background: linear-gradient(90deg, var(--red-deep), var(--red)); }
+
+  .q-text { font-size: clamp(16px, 2.6vw, 18.5px); font-weight: 600; line-height: 1.45; margin: 0 0 20px; }
+
+  .options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (max-width: 420px) { .options { grid-template-columns: 1fr; } }
+  .opt-btn {
+    text-align: left; background: rgba(255,255,255,0.04); border: 1.5px solid rgba(255,255,255,0.12); color: var(--text);
+    padding: 13px 14px; border-radius: 13px; font-family: inherit; font-size: 14.5px; font-weight: 500; cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease, transform 0.1s ease; display: flex; gap: 10px; align-items: flex-start;
+  }
+  .opt-btn .opt-letter { font-weight: 700; color: var(--gold-soft); flex-shrink: 0; }
+  .opt-btn:hover:not(:disabled) { border-color: var(--gold); background: rgba(217, 174, 71, 0.08); }
+  .opt-btn:active:not(:disabled) { transform: scale(0.99); }
+  .opt-btn:disabled { cursor: default; }
+  .opt-btn.correct-pick { border-color: var(--green); background: rgba(63, 166, 107, 0.18); }
+  .opt-btn.wrong-pick { border-color: var(--red); background: rgba(209, 75, 75, 0.18); }
+  .opt-btn.reveal-correct { border-color: var(--green); background: rgba(63, 166, 107, 0.1); }
+
+  .feedback { margin-top: 16px; font-size: 14.5px; font-weight: 600; min-height: 20px; }
+  .feedback.ok { color: #7FD9A4; }
+  .feedback.bad { color: #F09B9B; }
+
+  .modal-actions { margin-top: 20px; display: flex; justify-content: flex-end; }
+  .btn-primary {
+    background: linear-gradient(120deg, var(--gold-soft), var(--gold)); color: #26200A; border: none; font-weight: 700;
+    font-family: inherit; font-size: 14.5px; padding: 11px 22px; border-radius: 12px; cursor: pointer;
+  }
+  .btn-primary:hover { filter: brightness(1.05); }
+
+  /* ---------- Final overlay ---------- */
+  .final-card {
+    width: min(460px, 100%); background: linear-gradient(180deg, var(--panel-2), var(--panel));
+    border: 1px solid rgba(217, 174, 71, 0.3); border-radius: var(--radius-card); padding: clamp(28px, 5vw, 40px);
+    text-align: center; box-shadow: 0 24px 60px rgba(0,0,0,0.55); position: relative; overflow: hidden;
+  }
+  .final-card .trophy { font-size: 46px; margin-bottom: 6px; }
+  .final-card h2 { font-size: clamp(20px, 4vw, 25px); margin: 4px 0 4px; font-weight: 800; }
+  .final-card .score-big { font-family: 'Space Mono', monospace; font-size: clamp(40px, 9vw, 56px); font-weight: 700; color: var(--gold-soft); margin: 10px 0 4px; letter-spacing: 0.02em; }
+  .final-card .score-msg { color: var(--text-dim); font-size: 14.5px; line-height: 1.55; margin-bottom: 22px; }
+
+  .confetti-piece { position: absolute; top: -20px; width: 8px; height: 14px; opacity: 0.9; animation: fall linear forwards; border-radius: 2px; }
+  @keyframes fall { to { transform: translateY(420px) rotate(400deg); opacity: 0; } }
+
+  .hidden { display: none !important; }
+
+  footer.credit { text-align: center; color: rgba(169,182,201,0.5); font-size: 12px; margin-top: 46px; }
+
+  /* ---------- Intro: repaso relámpago ---------- */
+  .intro-wrap { max-width: 620px; margin: 0 auto; padding: clamp(28px, 6vw, 56px) clamp(16px, 4vw, 32px) 40px; text-align: center; }
+  .intro-badge {
+    display: inline-flex; align-items: center; gap: 8px; font-size: 13px; letter-spacing: 0.02em; color: var(--gold-soft);
+    background: rgba(217, 174, 71, 0.12); border: 1px solid rgba(217, 174, 71, 0.35); padding: 6px 14px; border-radius: 999px; margin-bottom: 14px;
+  }
+  .intro-wrap h1 { font-size: clamp(24px, 4.6vw, 34px); font-weight: 800; margin: 0 0 8px; }
+  .intro-wrap h1 span {
+    background: linear-gradient(120deg, var(--gold-soft), var(--gold) 60%, var(--gold-deep));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .intro-wrap > p.lead { color: var(--text-dim); font-size: 14.5px; margin: 0 0 26px; }
+
+  .panel-card {
+    background: linear-gradient(180deg, var(--panel-2), var(--panel));
+    border: 1px solid rgba(217, 174, 71, 0.25); border-radius: var(--radius-card);
+    padding: clamp(20px, 4.5vw, 30px); box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+  }
+
+  .match-status { text-align: center; font-size: 13px; font-weight: 600; letter-spacing: 0.02em; color: var(--text-dim); margin-bottom: 18px; }
+
+  .match-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+  .match-col { display: flex; flex-direction: column; gap: 9px; }
+
+  .match-item {
+    display: flex; align-items: center; gap: 9px; text-align: left; width: 100%;
+    background: rgba(255,255,255,0.04); border: 1.5px solid rgba(255,255,255,0.12); color: var(--text);
+    padding: 9px 10px; border-radius: 13px; font-family: inherit; cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease, transform 0.08s ease;
+  }
+  .match-item:hover:not(.matched):not(:disabled) { border-color: var(--gold); background: rgba(217,174,71,0.08); }
+  .match-item:active:not(.matched):not(:disabled) { transform: scale(0.98); }
+  .match-item.selected { border-color: var(--gold); background: rgba(217,174,71,0.16); box-shadow: inset 0 0 0 1.5px rgba(217,174,71,0.35); }
+  .match-item.matched { border-color: var(--green); background: rgba(63,166,107,0.14); cursor: default; opacity: 0.82; }
+  .match-item.wrong-flash { border-color: var(--red); background: rgba(209,75,75,0.2); animation: shakeX 0.3s ease; }
+  @keyframes shakeX { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+
+  .match-item .m-icon { width: 30px; height: 30px; flex-shrink: 0; display: flex; }
+  .match-item .m-text { font-size: clamp(12px, 2.3vw, 13.5px); line-height: 1.3; }
+  .match-item.right .m-text { font-family: 'Space Mono', monospace; font-size: clamp(10.5px, 2vw, 12px); line-height: 1.5; }
+
+  .match-hint { min-height: 20px; text-align: center; color: var(--text-dim); font-size: 13px; margin: 18px 0 0; }
+
+  .flash-skip {
+    display: block; margin: 18px auto 0; background: none; border: none; color: var(--text-dim);
+    text-decoration: underline; text-underline-offset: 3px; cursor: pointer; font-size: 13px; font-family: inherit;
+  }
+  .flash-skip:hover { color: var(--text); }
+
+  .flash-done { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+  .flash-done .big-emoji { font-size: 44px; margin-bottom: 4px; }
+  .flash-done h3 { font-size: clamp(19px, 3.6vw, 23px); margin: 0 0 6px; font-weight: 800; }
+  .flash-done p { color: var(--text-dim); font-size: 14px; margin: 0 0 18px; max-width: 40ch; line-height: 1.55; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===================== INTRO: EMPAREJAR FIGURA Y FÓRMULA ===================== -->
+<div class="intro-wrap" id="introScreen">
+  <span class="intro-badge">🧩 Empareja antes de empezar</span>
+  <h1>Une cada <span>figura</span> con su fórmula</h1>
+  <p class="lead">Selecciona una figura y luego la fórmula que le corresponde (perímetro y área). Al emparejar las 8, se abre la caja fuerte.</p>
+
+  <div class="panel-card" id="matchPanel">
+    <div class="match-status" id="matchStatus">0 / 8 emparejadas</div>
+    <div class="match-columns">
+      <div class="match-col" id="matchColLeft"></div>
+      <div class="match-col" id="matchColRight"></div>
+    </div>
+    <p class="match-hint" id="matchHint">Selecciona una figura y luego su fórmula correspondiente.</p>
+  </div>
+
+  <div class="panel-card flash-done hidden" id="flashDoneWrap">
+    <div class="big-emoji">🔓</div>
+    <h3>¡Repaso listo!</h3>
+    <p>Emparejaste las 8 figuras con sus fórmulas. Ahora es momento de abrir la caja fuerte.</p>
+    <button class="btn-primary" id="startGameBtn" type="button">Comenzar el juego</button>
+  </div>
+
+  <button class="flash-skip" id="flashSkipBtn" type="button">Saltar repaso e ir directo al juego →</button>
+</div>
+
+
+<!-- ===================== JUEGO: CAJA FUERTE ===================== -->
+<div class="wrap hidden" id="gameScreen">
+  <div class="hero">
+    <span class="badge">📐 Activación de conocimientos previos</span>
+    <h1>Caja Fuerte del <span>Perímetro y Área</span></h1>
+    <p>10 combinaciones por abrir. Cada una tiene una pregunta y 100 segundos para resolverla antes de que se vuelva a cerrar.</p>
+    <div class="progress-row">
+      <span id="progressText">0 / 10 abiertas</span>
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    </div>
+  </div>
+
+  <div class="grid" id="safesGrid"></div>
+
+  <div class="instructions">
+    Haz clic en una caja fuerte para abrirla. <strong>El puntaje total se revela recién al abrir las 10.</strong>
+  </div>
+
+  <div class="sound-toggle">
+    <button id="soundBtn" type="button">🔊 Sonido activado</button>
+  </div>
+
+  <footer class="credit">Geometría · 4° Año Medio · Perímetro y área de figuras planas</footer>
+</div>
+
+<!-- Modal pregunta -->
+<div class="overlay" id="overlay">
+  <div class="modal" id="modal">
+    <div class="modal-top">
+      <span class="q-label" id="qLabel">Pregunta 1 de 10</span>
+      <span class="timer-num" id="timerNum">100s</span>
+    </div>
+    <div class="timer-track"><div class="timer-fill" id="timerFill"></div></div>
+    <p class="q-text" id="qText"></p>
+    <div class="options" id="optionsGrid"></div>
+    <div class="feedback" id="feedback"></div>
+    <div class="modal-actions">
+      <button class="btn-primary hidden" id="closeBtn" type="button">Continuar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Overlay final -->
+<div class="overlay" id="finalOverlay">
+  <div class="final-card" id="finalCard">
+    <div class="trophy">🏆</div>
+    <h2>¡Caja fuerte abierta por completo!</h2>
+    <div class="score-big" id="scoreBig">0 / 10</div>
+    <div class="score-msg" id="scoreMsg"></div>
+    <button class="btn-primary" id="restartBtn" type="button">Reiniciar juego</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ===================== Datos: figuras del repaso ===================== */
+  var SHAPES = [
+    { name: "Rectángulo", peri: "Perímetro: P = 2(a + b)", area: "Área: A = a · b",
+      svg: '<svg viewBox="0 0 140 110" width="100%" height="100%"><rect x="15" y="25" width="110" height="55" fill="rgba(217,174,71,0.10)" stroke="#D9AE47" stroke-width="3"/></svg>' },
+    { name: "Cuadrado", peri: "Perímetro: P = 4l", area: "Área: A = l²",
+      svg: '<svg viewBox="0 0 140 110" width="100%" height="100%"><rect x="35" y="20" width="65" height="65" fill="rgba(217,174,71,0.10)" stroke="#D9AE47" stroke-width="3"/></svg>' },
+    { name: "Paralelogramo", peri: "Perímetro: P = 2(a + b)", area: "Área: A = a · b",
+      svg: '<svg viewBox="0 0 140 110" width="100%" height="100%"><polygon points="35,25 125,25 105,80 15,80" fill="rgba(217,174,71,0.10)" stroke="#D9AE47" stroke-width="3" stroke-linejoin="round"/></svg>' },
+    { name: "Rombo", peri: "Perímetro: P = 4l", area: "Área: A = (d · D) / 2",
+      svg: '<svg viewBox="0 0 140 110" width="100%" height="100%"><polygon points="70,8 128,55 70,102 12,55" fill="rgba(217,174,71,0.10)" stroke="#D9AE47" stroke-width="3" stroke-linejoin="round"/><line x1="70" y1="8" x2="70" y2="102" stroke="#9AA7B6" stroke-width="2" stroke-dasharray="4 4"/><line x1="12" y1="55" x2="128" y2="55" stroke="#9AA7B6" stroke-width="2" stroke-dasharray="4 4"/></svg>' },
+    { name: "Triángulo", peri: "Perímetro: P = a + b + c", area: "Área: A = (b · a) / 2",
+      svg: '<svg viewBox="0 0 140 110" width="100%" height="100%"><polygon points="70,12 128,92 12,92" fill="rgba(217,174,71,0.10)" stroke="#D9AE47" stroke-width="3" stroke-linejoin="round"/><line x1="70" y1="12" x2="70" y2="92" stroke="#9AA7B6" stroke-width="2" stroke-dasharray="4 4"/></svg>' },
+    { name: "Trapecio", peri: "Perímetro: P = a + b + c + b'", area: "Área: A = ((b + b') · a) / 2",
+      svg: '<svg viewBox="0 0 140 110" width="100%" height="100%"><polygon points="40,18 100,18 128,92 12,92" fill="rgba(217,174,71,0.10)" stroke="#D9AE47" stroke-width="3" stroke-linejoin="round"/></svg>' },
+    { name: "Polígono regular", peri: "Perímetro: P = n · l", area: "Área: A = (Perímetro · a) / 2",
+      svg: '<svg viewBox="0 0 140 110" width="100%" height="100%"><polygon points="70,8 124,44 103,100 37,100 16,44" fill="rgba(217,174,71,0.10)" stroke="#D9AE47" stroke-width="3" stroke-linejoin="round"/></svg>' },
+    { name: "Círculo", peri: "Perímetro: P = 2πr", area: "Área: A = π · r²",
+      svg: '<svg viewBox="0 0 140 110" width="100%" height="100%"><circle cx="70" cy="55" r="42" fill="rgba(217,174,71,0.10)" stroke="#D9AE47" stroke-width="3"/><line x1="70" y1="55" x2="112" y2="55" stroke="#9AA7B6" stroke-width="2"/></svg>' }
+  ];
+
+  /* ===================== Datos: preguntas del juego ===================== */
+  var QUESTIONS = [
+    { q: "¿Cuál es la fórmula del perímetro de un cuadrado de lado l?", opts: ["P = l²", "P = 4l", "P = 2l", "P = l/4"], correct: 1 },
+    { q: "¿Cuál es la fórmula del área de un círculo de radio r?", opts: ["A = 2πr", "A = πr²", "A = πd", "A = r²"], correct: 1 },
+    { q: "¿Cuál es la fórmula del área de un triángulo de base b y altura a?", opts: ["A = b × a", "A = (b × a)/2", "A = b + a", "A = 2(b+a)"], correct: 1 },
+    { q: "¿Cuál es la fórmula del perímetro de un círculo de radio r?", opts: ["P = πr²", "P = 2πr", "P = πd²", "P = 4r"], correct: 1 },
+    { q: "Un cuadrado tiene lados de 5 cm. ¿Cuál es su perímetro?", opts: ["10 cm", "15 cm", "20 cm", "25 cm"], correct: 2 },
+    { q: "Un rectángulo mide 8 cm de largo y 3 cm de ancho. ¿Cuál es su área?", opts: ["11 cm²", "22 cm²", "24 cm²", "32 cm²"], correct: 2 },
+    { q: "Un triángulo tiene una base de 6 cm y una altura de 4 cm. ¿Cuál es su área?", opts: ["10 cm²", "12 cm²", "24 cm²", "20 cm²"], correct: 1 },
+    { q: "Un círculo tiene un radio de 4 cm. Calcula su perímetro (usa π≈3).", opts: ["12 cm", "18 cm", "24 cm", "36 cm"], correct: 2 },
+    { q: "Un rombo tiene diagonales de 6 cm y 8 cm. ¿Cuál es su área?", opts: ["14 cm²", "24 cm²", "48 cm²", "28 cm²"], correct: 1 },
+    { q: "Un trapecio tiene bases de 5 cm y 9 cm, y una altura de 4 cm. ¿Cuál es su área?", opts: ["18 cm²", "24 cm²", "28 cm²", "36 cm²"], correct: 2 }
+  ];
+
+  var TIME_LIMIT = 100;
+  var LETTERS = ["A", "B", "C", "D"];
+
+  var state = {
+    opened: new Array(QUESTIONS.length).fill(false),
+    correct: new Array(QUESTIONS.length).fill(null),
+    current: null,
+    timeLeft: TIME_LIMIT,
+    timerId: null,
+    answered: false,
+    soundOn: true
+  };
+
+  /* ===================== Audio (sintetizado, sin archivos externos) ===================== */
+  var audioCtx = null;
+  function ensureAudio() {
+    if (!state.soundOn) return null;
+    if (!audioCtx) {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return null;
+      audioCtx = new Ctx();
+    }
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    return audioCtx;
+  }
+  function tone(freq, start, dur, type, vol) {
+    var ctx = ensureAudio();
+    if (!ctx) return;
+    try {
+      var t0 = ctx.currentTime + start;
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.type = type || "sine";
+      osc.frequency.setValueAtTime(freq, t0);
+      gain.gain.setValueAtTime(0, t0);
+      gain.gain.linearRampToValueAtTime(vol || 0.18, t0 + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(t0);
+      osc.stop(t0 + dur + 0.03);
+    } catch (e) { /* audio no disponible, se ignora */ }
+  }
+  function soundUnlock() { tone(420, 0, 0.07, "square", 0.14); tone(560, 0.08, 0.07, "square", 0.14); tone(760, 0.16, 0.12, "square", 0.16); }
+  function soundCorrect() { tone(523.25, 0, 0.12, "triangle", 0.2); tone(659.25, 0.11, 0.12, "triangle", 0.2); tone(783.99, 0.22, 0.2, "triangle", 0.22); }
+  function soundIncorrect() { tone(220, 0, 0.22, "sawtooth", 0.16); tone(185, 0.16, 0.32, "sawtooth", 0.16); }
+  function soundTick() { tone(900, 0, 0.045, "square", 0.09); }
+  function soundTimeUp() { tone(210, 0, 0.2, "sawtooth", 0.18); tone(150, 0.2, 0.38, "sawtooth", 0.18); }
+  function soundFanfare() {
+    var notes = [523.25, 659.25, 783.99, 1046.5];
+    for (var i = 0; i < notes.length; i++) tone(notes[i], i * 0.14, 0.22, "triangle", 0.2);
+    tone(1318.51, 0.58, 0.45, "triangle", 0.24);
+  }
+  function soundFlip() { tone(600, 0, 0.05, "sine", 0.07); tone(760, 0.05, 0.06, "sine", 0.08); }
+  function soundVaultOpen() { tone(140, 0, 0.16, "sine", 0.22); tone(520, 0.06, 0.1, "square", 0.14); tone(720, 0.13, 0.14, "square", 0.14); }
+
+  /* ===================== Emparejar figura y fórmula ===================== */
+  var matched = new Array(SHAPES.length).fill(false);
+  var selectedLeft = null;
+  var leftButtons = [];
+  var rightButtonsByShape = {};
+
+  var matchColLeft = document.getElementById("matchColLeft");
+  var matchColRight = document.getElementById("matchColRight");
+  var matchStatusEl = document.getElementById("matchStatus");
+  var matchHintEl = document.getElementById("matchHint");
+  var matchPanel = document.getElementById("matchPanel");
+  var flashDoneWrap = document.getElementById("flashDoneWrap");
+  var flashSkipBtn = document.getElementById("flashSkipBtn");
+  var startGameBtn = document.getElementById("startGameBtn");
+  var introScreen = document.getElementById("introScreen");
+  var gameScreen = document.getElementById("gameScreen");
+
+  function shuffleArray(arr) {
+    for (var i = arr.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+    }
+    return arr;
+  }
+
+  function buildMatchColumns() {
+    matchColLeft.innerHTML = "";
+    matchColRight.innerHTML = "";
+    leftButtons = [];
+    rightButtonsByShape = {};
+
+    SHAPES.forEach(function (s, idx) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "match-item left";
+      btn.innerHTML = '<span class="m-icon">' + s.svg + '</span><span class="m-text">' + s.name + '</span>';
+      btn.addEventListener("click", function () { onLeftClick(idx, btn); });
+      matchColLeft.appendChild(btn);
+      leftButtons[idx] = btn;
+    });
+
+    var order = shuffleArray(SHAPES.map(function (_, i) { return i; }));
+    order.forEach(function (shapeIdx) {
+      var s = SHAPES[shapeIdx];
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "match-item right";
+      btn.innerHTML = '<span class="m-text">' + s.peri + '<br>' + s.area + '</span>';
+      btn.addEventListener("click", function () { onRightClick(shapeIdx, btn); });
+      matchColRight.appendChild(btn);
+      rightButtonsByShape[shapeIdx] = btn;
+    });
+  }
+
+  function onLeftClick(idx, btn) {
+    if (matched[idx]) return;
+    leftButtons.forEach(function (b) { b.classList.remove("selected"); });
+    selectedLeft = idx;
+    btn.classList.add("selected");
+    soundFlip();
+    matchHintEl.textContent = 'Ahora elige la fórmula que corresponde a "' + SHAPES[idx].name + '".';
+  }
+
+  function onRightClick(shapeIdx, btn) {
+    if (matched[shapeIdx]) return;
+    if (selectedLeft === null) {
+      matchHintEl.textContent = "Primero selecciona una figura a la izquierda.";
+      return;
+    }
+    if (selectedLeft === shapeIdx) {
+      matched[shapeIdx] = true;
+      btn.classList.add("matched");
+      btn.disabled = true;
+      var leftBtn = leftButtons[selectedLeft];
+      leftBtn.classList.remove("selected");
+      leftBtn.classList.add("matched");
+      leftBtn.disabled = true;
+      soundCorrect();
+      var count = matched.filter(Boolean).length;
+      matchStatusEl.textContent = count + " / " + SHAPES.length + " emparejadas";
+      selectedLeft = null;
+      if (count === SHAPES.length) {
+        matchHintEl.textContent = "¡Todas emparejadas!";
+        setTimeout(finishFlash, 500);
+      } else {
+        matchHintEl.textContent = "¡Correcto! Sigue con la próxima figura.";
+      }
+    } else {
+      soundIncorrect();
+      btn.classList.add("wrong-flash");
+      setTimeout(function () { btn.classList.remove("wrong-flash"); }, 350);
+      matchHintEl.textContent = "Esa no es la fórmula correcta, intenta con otra.";
+    }
+  }
+
+  function finishFlash() {
+    matchPanel.classList.add("hidden");
+    flashSkipBtn.classList.add("hidden");
+    flashDoneWrap.classList.remove("hidden");
+  }
+
+  flashSkipBtn.addEventListener("click", finishFlash);
+  startGameBtn.addEventListener("click", function () {
+    soundVaultOpen();
+    introScreen.classList.add("hidden");
+    gameScreen.classList.remove("hidden");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
+  /* ===================== Juego: caja fuerte ===================== */
+  var grid = document.getElementById("safesGrid");
+  var progressText = document.getElementById("progressText");
+  var progressFill = document.getElementById("progressFill");
+  var overlay = document.getElementById("overlay");
+  var qLabel = document.getElementById("qLabel");
+  var timerNum = document.getElementById("timerNum");
+  var timerFill = document.getElementById("timerFill");
+  var qText = document.getElementById("qText");
+  var optionsGrid = document.getElementById("optionsGrid");
+  var feedback = document.getElementById("feedback");
+  var closeBtn = document.getElementById("closeBtn");
+  var finalOverlay = document.getElementById("finalOverlay");
+  var scoreBig = document.getElementById("scoreBig");
+  var scoreMsg = document.getElementById("scoreMsg");
+  var restartBtn = document.getElementById("restartBtn");
+  var soundBtn = document.getElementById("soundBtn");
+
+  function buildGrid() {
+    grid.innerHTML = "";
+    for (var i = 0; i < QUESTIONS.length; i++) {
+      (function (idx) {
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "safe";
+        btn.setAttribute("aria-label", "Caja fuerte " + (idx + 1) + ", pregunta bloqueada");
+        btn.innerHTML = '<div class="dial"></div><span class="lock-emoji">🔒</span><span class="num">' + (idx + 1) + '</span>';
+        btn.addEventListener("click", function () { openSafe(idx); });
+        grid.appendChild(btn);
+      })(i);
+    }
+    updateProgress();
+  }
+
+  function updateSafeVisual(idx) {
+    var btn = grid.children[idx];
+    if (!btn) return;
+    btn.classList.add("opened");
+    btn.classList.add(state.correct[idx] ? "correct" : "incorrect");
+    btn.innerHTML = '<span class="lock-emoji">' + (state.correct[idx] ? "✅" : "❌") + '</span><span class="num">' + (idx + 1) + '</span>';
+    btn.setAttribute("aria-label", "Caja fuerte " + (idx + 1) + ", " + (state.correct[idx] ? "respondida correctamente" : "respondida incorrectamente"));
+  }
+
+  function updateProgress() {
+    var openedCount = state.opened.filter(Boolean).length;
+    progressText.textContent = openedCount + " / " + QUESTIONS.length + " abiertas";
+    progressFill.style.width = (openedCount / QUESTIONS.length * 100) + "%";
+  }
+
+  function openSafe(idx) {
+    if (state.opened[idx]) return;
+    soundUnlock();
+    state.current = idx;
+    state.answered = false;
+    state.timeLeft = TIME_LIMIT;
+
+    qLabel.textContent = "Pregunta " + (idx + 1) + " de " + QUESTIONS.length;
+    qText.textContent = QUESTIONS[idx].q;
+    timerNum.textContent = TIME_LIMIT + "s";
+    timerNum.classList.remove("urgent");
+    timerFill.style.width = "100%";
+    timerFill.classList.remove("urgent");
+    feedback.textContent = "";
+    feedback.className = "feedback";
+    closeBtn.classList.add("hidden");
+
+    optionsGrid.innerHTML = "";
+    QUESTIONS[idx].opts.forEach(function (optText, optIdx) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "opt-btn";
+      b.innerHTML = '<span class="opt-letter">' + LETTERS[optIdx] + ')</span><span>' + optText + '</span>';
+      b.addEventListener("click", function () { selectAnswer(optIdx); });
+      optionsGrid.appendChild(b);
+    });
+
+    overlay.classList.add("show");
+    startTimer();
+  }
+
+  function startTimer() {
+    clearInterval(state.timerId);
+    state.timerId = setInterval(function () {
+      state.timeLeft--;
+      timerNum.textContent = Math.max(state.timeLeft, 0) + "s";
+      timerFill.style.width = Math.max(state.timeLeft / TIME_LIMIT * 100, 0) + "%";
+      if (state.timeLeft <= 10) { timerNum.classList.add("urgent"); timerFill.classList.add("urgent"); }
+      if (state.timeLeft <= 5 && state.timeLeft > 0) soundTick();
+      if (state.timeLeft <= 0) { clearInterval(state.timerId); handleTimeout(); }
+    }, 1000);
+  }
+
+  function handleTimeout() {
+    if (state.answered) return;
+    state.answered = true;
+    soundTimeUp();
+    var idx = state.current;
+    lockOptions();
+    highlightCorrect(idx);
+    feedback.textContent = "⏱️ Se acabó el tiempo. La respuesta correcta era " + LETTERS[QUESTIONS[idx].correct] + ").";
+    feedback.className = "feedback bad";
+    finishQuestion(idx, false);
+  }
+
+  function selectAnswer(optIdx) {
+    if (state.answered) return;
+    state.answered = true;
+    clearInterval(state.timerId);
+    var idx = state.current;
+    var isCorrect = optIdx === QUESTIONS[idx].correct;
+    var buttons = optionsGrid.querySelectorAll(".opt-btn");
+
+    buttons[optIdx].classList.add(isCorrect ? "correct-pick" : "wrong-pick");
+    if (!isCorrect) buttons[QUESTIONS[idx].correct].classList.add("reveal-correct");
+    lockOptions();
+
+    if (isCorrect) {
+      soundCorrect();
+      feedback.textContent = "✅ ¡Correcto!";
+      feedback.className = "feedback ok";
+    } else {
+      soundIncorrect();
+      feedback.textContent = "❌ Incorrecto. La respuesta correcta era " + LETTERS[QUESTIONS[idx].correct] + ").";
+      feedback.className = "feedback bad";
+    }
+    finishQuestion(idx, isCorrect);
+  }
+
+  function lockOptions() {
+    var buttons = optionsGrid.querySelectorAll(".opt-btn");
+    buttons.forEach(function (b) { b.disabled = true; });
+  }
+
+  function highlightCorrect(idx) {
+    var buttons = optionsGrid.querySelectorAll(".opt-btn");
+    buttons[QUESTIONS[idx].correct].classList.add("reveal-correct");
+  }
+
+  function finishQuestion(idx, isCorrect) {
+    state.opened[idx] = true;
+    state.correct[idx] = isCorrect;
+    updateSafeVisual(idx);
+    updateProgress();
+    closeBtn.classList.remove("hidden");
+  }
+
+  closeBtn.addEventListener("click", function () {
+    overlay.classList.remove("show");
+    var allOpened = state.opened.every(Boolean);
+    if (allOpened) setTimeout(showFinal, 250);
+  });
+
+  function showFinal() {
+    var score = state.correct.filter(Boolean).length;
+    var total = QUESTIONS.length;
+    scoreBig.textContent = score + " / " + total;
+
+    var msg;
+    if (score === total) {
+      msg = "¡Puntaje perfecto! Dominan por completo estas fórmulas, listos para avanzar a la guía.";
+    } else if (score >= total - 3) {
+      msg = "¡Muy buen resultado! Tienen una base sólida de perímetro y área para seguir.";
+    } else if (score >= total / 2) {
+      msg = "Buen intento. Conviene repasar juntos algunas fórmulas antes de avanzar.";
+    } else {
+      msg = "Es un buen punto de partida: repasemos perímetro y área antes de seguir con la guía.";
+    }
+    scoreMsg.textContent = msg;
+
+    finalOverlay.classList.add("show");
+    soundFanfare();
+    launchConfetti();
+  }
+
+  function launchConfetti() {
+    var colors = ["#D9AE47", "#F2D98A", "#3FA66B", "#EEF2F7"];
+    var card = document.getElementById("finalCard");
+    for (var i = 0; i < 36; i++) {
+      var piece = document.createElement("div");
+      piece.className = "confetti-piece";
+      piece.style.left = Math.random() * 100 + "%";
+      piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+      piece.style.animationDuration = (1.6 + Math.random() * 1.2) + "s";
+      piece.style.animationDelay = (Math.random() * 0.4) + "s";
+      card.appendChild(piece);
+      (function (p) { setTimeout(function () { if (p.parentNode) p.parentNode.removeChild(p); }, 3200); })(piece);
+    }
+  }
+
+  restartBtn.addEventListener("click", function () {
+    state.opened = new Array(QUESTIONS.length).fill(false);
+    state.correct = new Array(QUESTIONS.length).fill(null);
+    state.current = null;
+    state.answered = false;
+    clearInterval(state.timerId);
+    finalOverlay.classList.remove("show");
+    buildGrid();
+  });
+
+  soundBtn.addEventListener("click", function () {
+    state.soundOn = !state.soundOn;
+    soundBtn.textContent = state.soundOn ? "🔊 Sonido activado" : "🔇 Sonido desactivado";
+  });
+
+  /* ===================== Init ===================== */
+  buildGrid();
+  buildMatchColumns();
+})();
+</script>
+
+</body>
+</html>
